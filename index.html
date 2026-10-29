@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Updraft · Soaring forecasts for free flight pilots</title>
+<meta name="description" content="Updraft turns raw weather models into a plain forecast for paraglider and hang glider pilots. Thermals, cloudbase and wind aloft for 4,812 launch sites, refreshed every hour.">
+<meta property="og:title" content="Updraft · Find the lift before you launch">
+<meta property="og:description" content="Thermals, cloudbase and wind aloft for 4,812 launch sites, refreshed every hour.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#1f4fd8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%231f4fd8'/%3E%3Cpath d='M10 34 54 16 30 38z' fill='%23fff'/%3E%3Cpath d='M30 38 54 16 36 50z' fill='%23b8cdfb'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0a1433; --ink-2:#28345a; --muted:rgba(10,20,51,.62); --line:rgba(10,20,51,.1);
+  --paper:#f3f5fa; --white:#fff;
+  --cobalt:#1f4fd8; --cobalt-d:#0e2c9e; --sky:#5c8bf0; --pale:#b8cdfb; --mist:#e7eefe;
+  --sun:#ffd24a; --orange:#ff7a3d; --green:#2fd27a;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --mono:"DM Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--paper);-webkit-text-size-adjust:100%}
+html.lenis,html.lenis body{height:auto}
+.lenis.lenis-smooth{scroll-behavior:auto!important}
+.lenis.lenis-stopped{overflow:hidden}
+body{font-family:Manrope,system-ui,sans-serif;background:var(--paper);color:var(--ink);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+svg,canvas{display:block}
+::selection{background:var(--sun);color:var(--ink)}
+:focus-visible{outline:3px solid var(--sun);outline-offset:3px;border-radius:10px}
+h1,h2,h3{font-weight:600;letter-spacing:-.035em;text-wrap:balance}
+p{text-wrap:pretty}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px}
+.mono{font-family:var(--mono);font-size:12px;letter-spacing:.02em;text-transform:uppercase}
+.skip{position:fixed;left:16px;top:-60px;z-index:200;background:var(--sun);color:var(--ink);padding:8px 12px;border-radius:8px;font-weight:700;transition:top .3s var(--ease)}
+.skip:focus{top:16px}
+.tag{display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 12px;border-radius:999px;background:var(--mist);color:var(--cobalt);font-family:var(--mono);font-size:12px;letter-spacing:.02em;text-transform:uppercase}
+.tag.light{background:rgba(255,255,255,.14);color:#fff}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 22px;border-radius:14px;font-weight:700;font-size:16px;white-space:nowrap;transition:transform .25s var(--ease),box-shadow .25s var(--ease),background .3s}
+.btn.sun{background:var(--sun);color:var(--ink);box-shadow:0 4px 0 #c99a12,0 12px 24px -8px rgba(201,154,18,.6),inset 0 1px 0 rgba(255,255,255,.6)}
+.btn.sun:hover{transform:translateY(-2px);box-shadow:0 6px 0 #c99a12,0 18px 28px -10px rgba(201,154,18,.7),inset 0 1px 0 rgba(255,255,255,.6)}
+.btn.sun:active{transform:translateY(3px);box-shadow:0 1px 0 #c99a12,0 4px 10px -6px rgba(201,154,18,.6),inset 0 1px 0 rgba(255,255,255,.6)}
+.btn.ink{background:var(--ink);color:#fff;box-shadow:0 4px 0 #000,inset 0 1px 0 rgba(255,255,255,.15)}
+.btn.ink:hover{transform:translateY(-2px);box-shadow:0 6px 0 #000,inset 0 1px 0 rgba(255,255,255,.15)}
+.btn.ink:active{transform:translateY(3px);box-shadow:0 1px 0 #000}
+.btn.sm{height:40px;padding:0 16px;font-size:14px;border-radius:12px}
+.link{display:inline-flex;align-items:center;gap:8px;font-weight:600;padding:12px 4px;text-shadow:0 1px 12px rgba(8,24,90,.5);border-bottom:1px solid transparent;transition:border-color .3s}
+.link:hover{border-color:currentColor}
+.link .arr{transition:transform .5s var(--ease)}
+.link:hover .arr{transform:translateY(3px)}
+
+/* nav */
+.nav{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:100;width:min(1192px,calc(100% - 32px));display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 8px 8px 16px;border-radius:18px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);transition:background .5s var(--ease),color .5s var(--ease),border-color .5s}
+.nav.light{background:rgba(255,255,255,.72);border-color:var(--line);color:var(--ink)}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:18px;letter-spacing:-.03em}
+.logo svg{width:28px;height:28px}
+.nav-links{display:flex;gap:4px}
+.nav-links a{padding:8px 12px;border-radius:10px;font-size:14px;font-weight:600;opacity:.78;transition:opacity .3s,background .3s}
+.nav-links a:hover{opacity:1;background:rgba(255,255,255,.12)}
+.nav.light .nav-links a:hover{background:rgba(10,20,51,.05)}
+.nav-links a.active{opacity:1}
+.menu-btn{display:none;width:40px;height:40px;border-radius:12px;position:relative;background:rgba(255,255,255,.14)}
+.nav.light .menu-btn{background:rgba(10,20,51,.06)}
+.menu-btn i{position:absolute;left:12px;right:12px;height:2px;background:currentColor;border-radius:2px;transition:transform .5s var(--ease)}
+.menu-btn i:nth-child(1){top:15px}.menu-btn i:nth-child(2){top:23px}
+.menu-open .menu-btn i:nth-child(1){transform:translateY(4px) rotate(45deg)}
+.menu-open .menu-btn i:nth-child(2){transform:translateY(-4px) rotate(-45deg)}
+.mobile-menu{position:fixed;inset:0;z-index:90;background:rgba(14,44,158,.94);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:96px 32px;gap:8px;opacity:0;pointer-events:none;transition:opacity .5s var(--ease)}
+.menu-open .mobile-menu{opacity:1;pointer-events:auto}
+.menu-open .nav{color:#fff;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22)}
+.mobile-menu a{font-size:40px;font-weight:600;letter-spacing:-.03em;opacity:0;transform:translateY(24px);transition:opacity .5s var(--ease),transform .5s var(--ease)}
+.menu-open .mobile-menu a{opacity:1;transform:none}
+
+/* hero */
+.hero{position:relative;min-height:100svh;color:#fff;overflow:hidden;background:var(--cobalt);display:flex;align-items:center}
+.pix{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.trail{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.glider{position:absolute;left:0;top:0;width:64px;height:40px;margin:-20px 0 0 -32px;pointer-events:none;filter:drop-shadow(0 10px 8px rgba(8,24,90,.35));will-change:transform;z-index:3}
+.hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.3fr .8fr;gap:48px;align-items:center;width:100%;padding-top:120px;padding-bottom:96px}
+.hero h1{font-size:clamp(44px,5.3vw,76px);line-height:1;letter-spacing:-.045em;margin:24px 0;max-width:720px}
+.hero h1 span{display:block;background:linear-gradient(90deg,#fff,#c9d8ff);-webkit-background-clip:text;background-clip:text;color:transparent;opacity:0;transform:translateY(40px);transition:opacity 1.2s var(--ease),transform 1.2s var(--ease)}
+.hero h1 span:nth-child(2){transition-delay:.1s}
+.loaded .hero h1 span{opacity:1;transform:none}
+.hero .sub{font-size:18px;line-height:28px;color:rgba(255,255,255,.86);max-width:520px;margin-bottom:32px;text-shadow:0 1px 16px rgba(8,24,90,.45)}
+.cta-row{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.proof{display:inline-flex;align-items:center;gap:12px;margin-top:40px;padding:6px 16px 6px 6px;border-radius:999px;background:rgba(10,20,51,.32);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font-size:14px;color:rgba(255,255,255,.9)}
+.avs{display:flex}
+.avs i{width:32px;height:32px;border-radius:50%;border:2px solid var(--cobalt);margin-left:-8px;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:700;color:var(--ink);background:var(--c)}
+.avs i:first-child{margin-left:0}
+.fade{opacity:0;transform:translateY(24px);transition:opacity 1.2s var(--ease),transform 1.2s var(--ease);transition-delay:var(--d,0s)}
+.loaded .fade{opacity:1;transform:none}
+
+.fc{position:relative;padding:24px;border-radius:28px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:0 30px 60px -20px rgba(6,20,90,.5),inset 0 1px 0 rgba(255,255,255,.3)}
+.fc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:24px}
+.fc-top b{display:block;font-size:20px;letter-spacing:-.02em}
+.fc-top small{font-size:13px;color:rgba(255,255,255,.75)}
+.status{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:999px;background:rgba(10,20,51,.28);font-size:13px;font-weight:600;white-space:nowrap}
+.status i{width:10px;height:10px;border-radius:50%;background:var(--st,var(--green));box-shadow:0 0 0 3px rgba(255,255,255,.12),0 0 12px var(--st,var(--green));transition:background .4s,box-shadow .4s}
+.fc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px}
+.fc-grid>div{padding:16px;border-radius:16px;background:rgba(10,20,51,.18)}
+.fc-grid small{display:block;font-size:12px;color:rgba(255,255,255,.72);margin-bottom:4px}
+.fc-grid b{font-family:var(--mono);font-weight:500;font-size:28px;letter-spacing:-.04em;line-height:1.1}
+.fc-grid span{font-size:13px;color:rgba(255,255,255,.72);margin-left:4px}
+.slider{position:relative;height:56px;border-radius:14px;background:rgba(10,20,51,.18);cursor:grab;touch-action:none;outline-offset:2px}
+.slider:active{cursor:grabbing}
+.ticks{position:absolute;inset:0 16px;display:flex;justify-content:space-between;align-items:center}
+.ticks i{width:2px;height:12px;border-radius:2px;background:rgba(255,255,255,.4);transform:scaleY(var(--s,1));transition:background .3s}
+.ticks i.hot{background:#fff}
+.handle{position:absolute;top:6px;bottom:6px;left:16px;width:4px;margin-left:-2px;border-radius:4px;background:var(--sun);box-shadow:0 0 0 4px rgba(255,210,74,.25);will-change:transform}
+.handle span{position:absolute;bottom:calc(100% + 14px);left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:12px;padding:4px 8px;border-radius:8px;background:var(--sun);color:var(--ink);white-space:nowrap}
+.handle span::after{content:"";position:absolute;left:50%;top:100%;margin-left:-4px;border:4px solid transparent;border-top-color:var(--sun)}
+.fc-axis{display:flex;justify-content:space-between;margin-top:8px;padding:0 8px;font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.6)}
+.fc-hint{position:absolute;right:24px;top:calc(100% + 12px);font-size:13px;color:rgba(255,255,255,.75);display:flex;align-items:center;gap:8px}
+
+/* logos */
+.clubs{padding:40px 0;background:var(--white);border-bottom:1px solid var(--line);overflow:hidden}
+.clubs-in{display:flex;align-items:center;gap:48px}
+.clubs-in>span{flex:none;font-size:13px;color:var(--muted);max-width:140px;line-height:1.4}
+.clubs-mask{flex:1;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)}
+.marquee{display:flex;width:max-content;animation:marq 36s linear infinite}
+.marquee b{display:flex;align-items:center;gap:12px;margin-right:56px;font-size:18px;font-weight:700;letter-spacing:-.02em;color:rgba(10,20,51,.45);white-space:nowrap}
+.marquee b::before{content:"";width:12px;height:12px;background:currentColor;clip-path:polygon(0 60%,100% 0,45% 70%,55% 100%)}
+@keyframes marq{to{transform:translateX(-50%)}}
+
+/* sections */
+.sec{padding:144px 0}
+.sec-head{max-width:720px;margin-bottom:56px}
+.sec-head h2,.h2{font-size:clamp(36px,4.6vw,60px);line-height:1.02;margin:16px 0}
+.sec-head p,.lead{color:var(--muted);font-size:18px;line-height:28px}
+.reveal{opacity:0;transform:translateY(32px);transition:opacity .8s var(--ease),transform .8s var(--ease);transition-delay:var(--d,0s)}
+.reveal.in{opacity:1;transform:none}
+
+.tagline{padding:176px 0;background:var(--white)}
+.tagline p{font-size:clamp(34px,4.8vw,60px);line-height:1.08;letter-spacing:-.04em;font-weight:600;max-width:1000px;text-wrap:balance}
+.tagline .w{display:inline-block;color:var(--ink);opacity:.18;transform:translateY(8px);transition:opacity .6s var(--ease),transform .6s var(--ease),color .6s}
+.tagline .w.on{opacity:1;transform:none}
+.tagline .w.hl.on{color:var(--cobalt)}
+
+/* horizontal */
+.hs{position:relative;background:var(--paper)}
+.hs-stick{position:sticky;top:0;height:100svh;overflow:hidden;display:flex;flex-direction:column;justify-content:center;padding-top:64px}
+.hs-top{width:100%;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:40px}
+.hs-top h2{font-size:clamp(36px,4.4vw,56px);line-height:1.02;margin-top:16px}
+.hs-prog{display:flex;align-items:center;gap:16px;font-family:var(--mono);font-size:13px;color:var(--muted)}
+.hs-bar{width:160px;height:4px;border-radius:4px;background:var(--line);overflow:hidden}
+.hs-bar i{display:block;height:100%;background:var(--cobalt);transform-origin:left;transform:scaleX(0)}
+.hs-track{display:flex;gap:24px;padding-left:max(24px,calc(50% - 596px));will-change:transform}
+.hcard{flex:none;width:min(520px,82vw);height:min(500px,calc(100svh - 330px));min-height:420px;border-radius:28px;background:var(--white);border:1px solid var(--line);padding:32px;display:flex;flex-direction:column;overflow:hidden;position:relative;transition:transform .6s var(--ease),box-shadow .6s var(--ease)}
+.hcard:hover{transform:translateY(-6px);box-shadow:0 24px 48px -24px rgba(10,20,51,.25)}
+.hcard .num{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.hcard h3{font-size:28px;line-height:1.1;margin:8px 0 8px}
+.hcard p{color:var(--muted);font-size:15px;line-height:24px;max-width:400px}
+.hcard .viz{flex:1;margin:24px -32px -32px;position:relative;overflow:hidden;background:var(--mist);border-top:1px solid var(--line)}
+.hcard .big{position:absolute;right:24px;top:20px;font-family:var(--mono);font-size:40px;letter-spacing:-.05em;color:var(--cobalt);line-height:1;text-align:right}
+.hcard .big small{display:block;font-size:12px;letter-spacing:0;color:var(--muted);margin-top:4px}
+.bub{position:absolute;bottom:-20px;border-radius:50%;background:var(--white);border:2px solid var(--cobalt);opacity:0;animation:rise var(--t) var(--ease) infinite;animation-delay:var(--dl)}
+@keyframes rise{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:1}100%{transform:translateY(calc(-1 * var(--h,300px))) scale(1.1);opacity:0}}
+.ground{position:absolute;left:0;right:0;bottom:0;height:28px;background:var(--cobalt);clip-path:polygon(0 60%,12% 30%,24% 55%,38% 10%,52% 48%,66% 25%,80% 50%,92% 20%,100% 45%,100% 100%,0 100%)}
+.ruler{position:absolute;left:24px;top:24px;bottom:24px;width:64px;display:flex;flex-direction:column;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.ruler span{display:flex;align-items:center;gap:8px}
+.ruler span::after{content:"";width:12px;height:1px;background:var(--muted)}
+.pcloud{position:absolute;left:44%;width:150px;will-change:transform}
+.pcloud svg{width:100%;height:auto}
+.cbline{position:absolute;left:96px;right:24px;border-top:2px dashed var(--cobalt);opacity:.5}
+.wrow{display:grid;grid-template-columns:80px 1fr auto;align-items:center;gap:16px;padding:16px 24px;border-bottom:1px solid var(--line)}
+.wrow:last-child{border:0}
+.wrow small{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.wrow .arrow{width:48px;height:48px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:grid;place-items:center}
+.wrow .arrow svg{width:24px;height:24px;color:var(--cobalt);transform:rotate(var(--r));animation:wob 3.2s ease-in-out infinite alternate;animation-delay:var(--dl)}
+@keyframes wob{from{rotate:-8deg}to{rotate:8deg}}
+.wrow .bar2{height:8px;border-radius:8px;background:var(--white);overflow:hidden}
+.wrow .bar2 i{display:block;height:100%;width:var(--w);background:var(--c,var(--cobalt));border-radius:8px}
+.wrow b{font-family:var(--mono);font-weight:500;font-size:15px}
+.route{stroke-dasharray:8 8;animation:dash 1.6s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-32}}
+
+/* chart */
+.chart-card{border-radius:28px;background:var(--white);border:1px solid var(--line);padding:32px;position:relative}
+.chart-top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap;margin-bottom:24px}
+.chart-top h3{font-size:22px;letter-spacing:-.02em}
+.chart-top p{color:var(--muted);font-size:14px}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:8px}
+.legend i{width:12px;height:12px;border-radius:3px;background:var(--c)}
+.chart{position:relative;touch-action:pan-y;cursor:crosshair}
+.chart svg{width:100%;height:auto;overflow:visible}
+.chart .axis{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.chart .gl{stroke:var(--line)}
+.chart .ln{fill:none;stroke:var(--cobalt);stroke-width:2.5;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 2.2s var(--ease)}
+.chart .area{opacity:0;transition:opacity 1.2s var(--ease) .6s}
+.chart.in .ln{stroke-dashoffset:0}
+.chart.in .area{opacity:1}
+.chart .best{fill:var(--sun);opacity:.22}
+.chart .best-l{font-family:var(--mono);font-size:11px;fill:#8a6a00}
+.scrub{position:absolute;top:0;bottom:28px;width:0;border-left:1.5px solid var(--ink);pointer-events:none;opacity:0;transition:opacity .3s;will-change:transform}
+.chart:hover .scrub,.chart.touch .scrub{opacity:1}
+.scrub i{position:absolute;left:-7px;width:12px;height:12px;border-radius:50%;background:var(--sun);border:2px solid var(--ink);margin-top:-6px}
+.scrub div{position:absolute;top:0;left:12px;padding:12px;border-radius:14px;background:var(--ink);color:#fff;font-size:13px;white-space:nowrap;min-width:160px}
+.scrub div.flip{left:auto;right:12px}
+.scrub div b{font-family:var(--mono);font-weight:500;font-size:16px;display:block;margin-bottom:4px}
+.scrub div span{display:flex;justify-content:space-between;gap:16px;color:rgba(255,255,255,.7)}
+.scrub div span em{font-style:normal;color:#fff;font-family:var(--mono)}
+
+/* tilt features */
+.tilts{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;perspective:1100px}
+.tilt{position:relative;border-radius:28px;background:var(--white);border:1px solid var(--line);padding:28px;transform-style:preserve-3d;transition:transform .7s var(--ease),box-shadow .7s var(--ease);will-change:transform;overflow:hidden}
+.tilt:hover{box-shadow:0 40px 60px -30px rgba(10,20,51,.35)}
+.tilt .art{height:220px;border-radius:20px;background:var(--mist);margin-bottom:24px;position:relative;overflow:hidden;transform:translateZ(30px)}
+.tilt h3{font-size:22px;letter-spacing:-.02em;margin-bottom:8px;transform:translateZ(20px)}
+.tilt p{color:var(--muted);font-size:15px;line-height:24px;transform:translateZ(10px)}
+.tilt .glare{position:absolute;inset:0;border-radius:inherit;background:radial-gradient(500px circle at var(--gx,50%) var(--gy,0%),rgba(255,255,255,.55),transparent 40%);opacity:0;transition:opacity .4s;pointer-events:none;mix-blend-mode:soft-light}
+.tilt:hover .glare{opacity:1}
+.mover{position:absolute;width:12px;height:12px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 6px rgba(255,122,61,.2);offset-path:path("M30 170 C 80 120, 120 160, 170 90 S 260 40, 300 70");animation:move 6s var(--ease) infinite alternate}
+@keyframes move{from{offset-distance:0%}to{offset-distance:100%}}
+
+/* testimonials carousel */
+.car-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:48px}
+.car-btns{display:flex;gap:8px}
+.car-btns button{width:48px;height:48px;border-radius:14px;background:var(--white);border:1px solid var(--line);display:grid;place-items:center;transition:transform .25s var(--ease),background .3s}
+.car-btns button:hover{background:var(--mist)}
+.car-btns button:active{transform:scale(.94)}
+.car{overflow:hidden;cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.car:active{cursor:grabbing}
+.car-track{display:flex;gap:24px;padding-left:max(24px,calc(50% - 596px));will-change:transform}
+.tq{flex:none;width:min(440px,84vw);min-height:320px;padding:32px;border-radius:28px;background:var(--white);border:1px solid var(--line);display:flex;flex-direction:column;justify-content:space-between;transition:background .5s,color .5s,transform .6s var(--ease)}
+.tq.on{background:var(--cobalt);color:#fff;border-color:var(--cobalt)}
+.tq p{font-size:20px;line-height:30px;letter-spacing:-.01em;font-weight:500}
+.tq footer{display:flex;align-items:center;gap:12px;font-size:14px;font-weight:600}
+.tq footer small{display:block;font-weight:400;opacity:.7}
+.tq .av{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-weight:700;color:var(--ink);background:var(--c)}
+.dots{display:flex;gap:8px;justify-content:center;margin-top:32px}
+.dots i{width:8px;height:8px;border-radius:8px;background:var(--line);transition:width .5s var(--ease),background .4s}
+.dots i.on{width:28px;background:var(--cobalt)}
+
+/* pricing */
+.price-card{display:grid;grid-template-columns:1.1fr .9fr;border-radius:32px;overflow:hidden;background:var(--white);border:1px solid var(--line)}
+.pc-l{padding:48px}
+.pc-r{padding:48px;background:var(--ink);color:#fff;display:flex;flex-direction:column}
+.days-q{font-size:15px;color:var(--muted);margin:32px 0 16px;display:flex;justify-content:space-between}
+.days-q b{font-family:var(--mono);color:var(--ink);font-weight:500}
+.dslider{position:relative;height:64px;border-radius:16px;background:var(--mist);touch-action:none;cursor:grab}
+.dslider .ticks{inset:0 20px}
+.dslider .ticks i{background:rgba(31,79,216,.3)}
+.dslider .ticks i.hot{background:var(--cobalt)}
+.dslider .fill{position:absolute;left:0;top:0;bottom:0;border-radius:16px;background:rgba(31,79,216,.1);width:0}
+.dslider .knob2{position:absolute;top:8px;bottom:8px;left:0;width:48px;margin-left:-24px;border-radius:12px;background:var(--cobalt);box-shadow:0 4px 0 var(--cobalt-d);display:grid;place-items:center;color:#fff;will-change:transform}
+.dslider .knob2::before{content:"";width:12px;height:12px;border-left:2px solid rgba(255,255,255,.7);border-right:2px solid rgba(255,255,255,.7)}
+.per-day{display:flex;align-items:baseline;gap:12px;margin-top:40px}
+.per-day b{font-size:clamp(48px,6vw,80px);font-weight:600;letter-spacing:-.05em;line-height:1}
+.per-day span{color:var(--muted)}
+.compare{margin-top:8px;color:var(--cobalt);font-weight:600;min-height:24px}
+.pc-r h3{font-size:24px;letter-spacing:-.02em}
+.pc-r .price{font-size:56px;font-weight:600;letter-spacing:-.05em;margin:16px 0 4px;line-height:1}
+.pc-r .price small{font-size:16px;font-weight:500;letter-spacing:0;color:rgba(255,255,255,.6)}
+.pc-r ul{list-style:none;display:grid;gap:12px;margin:32px 0;font-size:15px;color:rgba(255,255,255,.85)}
+.pc-r li{display:flex;gap:12px}
+.pc-r li svg{flex:none;width:20px;height:20px;color:var(--sun)}
+.pc-r .btn{margin-top:auto}
+.pc-r .fine{margin-top:16px;font-size:13px;color:rgba(255,255,255,.6);text-align:center}
+
+/* faq */
+.faq{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.fq{border-radius:20px;background:var(--white);border:1px solid var(--line);transition:border-color .3s,box-shadow .5s var(--ease)}
+.fq.open{border-color:rgba(31,79,216,.35);box-shadow:0 16px 32px -20px rgba(31,79,216,.4)}
+.fq button{width:100%;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:24px;text-align:left;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.fq .pm{flex:none;width:32px;height:32px;border-radius:10px;background:var(--mist);position:relative;transition:background .3s,transform .5s var(--ease)}
+.fq .pm::before,.fq .pm::after{content:"";position:absolute;left:10px;right:10px;top:15px;height:2px;border-radius:2px;background:var(--cobalt);transition:transform .5s var(--ease)}
+.fq .pm::after{transform:rotate(90deg)}
+.fq.open .pm{background:var(--cobalt);transform:rotate(180deg)}
+.fq.open .pm::before,.fq.open .pm::after{background:#fff}
+.fq.open .pm::after{transform:rotate(0)}
+.fq .ans{display:grid;grid-template-rows:0fr;transition:grid-template-rows .6s var(--ease)}
+.fq.open .ans{grid-template-rows:1fr}
+.fq .ans>div{overflow:hidden}
+.fq .ans p{padding:0 24px 24px;color:var(--muted);font-size:15px;line-height:24px}
+
+/* final */
+.final{position:relative;min-height:88svh;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;overflow:hidden;background:var(--cobalt)}
+.final-in{position:relative;z-index:2;padding:96px 24px}
+.final h2{font-size:clamp(44px,6.4vw,96px);line-height:.98;letter-spacing:-.045em;max-width:920px;margin:24px auto;background:linear-gradient(90deg,#fff,#c9d8ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.final p{color:rgba(255,255,255,.85);font-size:18px;max-width:520px;margin:0 auto 40px}
+.sub-form{display:flex;gap:8px;max-width:460px;margin:0 auto;padding:6px;border-radius:18px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.sub-form input{flex:1;min-width:0;height:48px;padding:0 16px;border:0;background:none;color:#fff;font:inherit;font-size:16px;outline:none}
+.sub-form input::placeholder{color:rgba(255,255,255,.65)}
+.form-msg{margin-top:16px;font-size:14px;min-height:20px;color:#fff}
+.form-msg.err{color:var(--sun)}
+
+footer.site{background:var(--cobalt-d);color:#fff;padding:72px 0 0;overflow:hidden}
+.foot{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:32px;font-size:14px}
+.foot h4{font-family:var(--mono);font-weight:400;font-size:12px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:16px}
+.foot ul{list-style:none;display:grid;gap:10px}
+.foot a{color:rgba(255,255,255,.82);transition:color .3s}
+.foot a:hover{color:var(--sun)}
+.foot .blurb{color:rgba(255,255,255,.7);max-width:280px;margin-top:16px}
+.wordmark{font-size:clamp(88px,21vw,320px);font-weight:700;letter-spacing:-.07em;line-height:.78;margin-top:72px;text-align:center;color:rgba(255,255,255,.08);user-select:none;white-space:nowrap;overflow:hidden;padding-top:.06em}
+.wordmark span{display:inline-block;transform:translateY(30%);transition:transform 1.2s var(--ease),color .6s;transition-delay:calc(var(--i)*.05s)}
+.wordmark.in span{transform:none}
+.wordmark span:hover{color:rgba(255,210,74,.5);transition-delay:0s}
+.legal{display:flex;justify-content:space-between;gap:16px;padding:24px 0;border-top:1px solid rgba(255,255,255,.14);font-size:13px;color:rgba(255,255,255,.6)}
+.legal a:hover{color:#fff}
+
+@media (max-width:980px){
+  .nav-links,.nav .btn{display:none}.menu-btn{display:block}
+  .hero-grid{grid-template-columns:1fr;gap:56px}
+  .fc-hint{display:none}
+  .tilts,.faq{grid-template-columns:1fr}
+  .price-card{grid-template-columns:1fr}
+  .pc-l,.pc-r{padding:32px}
+  .foot{grid-template-columns:1fr 1fr}
+  .sec{padding:104px 0}.tagline{padding:120px 0}
+  .clubs-in>span{display:none}
+}
+@media (max-width:760px){
+  .hs{height:auto!important}
+  .hs-stick{position:relative;height:auto;padding:104px 0}
+  .hs-track{flex-direction:column;padding:0 24px;transform:none!important}
+  .hcard{width:100%;height:520px}
+  .hs-prog{display:none}
+  .car-btns{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important}
+  .reveal,.fade,.hero h1 span,.wordmark span,.tagline .w{transform:none!important}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav" id="nav">
+  <a class="logo" href="#top" aria-label="Updraft home">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#ffd24a"/><path d="M10 34 54 16 30 38z" fill="#0a1433"/><path d="M30 38 54 16 36 50z" fill="#28345a"/></svg>
+    Updraft
+  </a>
+  <nav class="nav-links" aria-label="Primary">
+    <a href="#forecast">Forecast</a>
+    <a href="#layers">Layers</a>
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+  <a class="btn sun sm" href="#pricing">Start free trial</a>
+  <button class="menu-btn" aria-label="Open menu" aria-expanded="false"><i></i><i></i></button>
+</header>
+<div class="mobile-menu" aria-hidden="true">
+  <a href="#forecast">Forecast</a><a href="#layers">Layers</a><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a>
+</div>
+
+<main id="main">
+  <section class="hero" id="top" data-dark>
+    <canvas class="pix" id="pix" aria-hidden="true"></canvas>
+    <canvas class="trail" id="trail" aria-hidden="true"></canvas>
+    <svg class="glider" id="glider" viewBox="0 0 64 40" aria-hidden="true"><path d="M2 20 62 4 26 24z" fill="#fff"/><path d="M26 24 62 4 34 36z" fill="#dbe5ff"/><path d="M26 24 34 36 30 27z" fill="#9fb6f2"/></svg>
+    <div class="wrap hero-grid">
+      <div>
+        <span class="tag light fade"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" stroke="currentColor" stroke-width="2"/></svg>Forecast updated 6 min ago</span>
+        <h1><span>Find the lift</span><span>before you launch.</span></h1>
+        <p class="sub fade" style="--d:.2s">Updraft turns raw weather models into a plain forecast for free flight pilots. Thermals, cloudbase and wind aloft for 4,812 launch sites, refreshed every hour.</p>
+        <div class="cta-row fade" style="--d:.3s">
+          <a class="btn sun" href="#pricing">Start your 30 day trial</a>
+          <a class="link" href="#forecast">See today's forecast <span class="arr">↓</span></a>
+        </div>
+        <div class="proof fade" style="--d:.4s">
+          <span class="avs" aria-hidden="true"><i style="--c:#ffd24a">MB</i><i style="--c:#b8cdfb">LR</i><i style="--c:#ffb38a">AK</i><i style="--c:#c8f2d8">TS</i></span>
+          Rated 4.8 by 9,316 pilots in 61 countries
+        </div>
+      </div>
+      <div class="fade" style="--d:.35s">
+        <div class="fc" id="fc">
+          <div class="fc-top">
+            <div><b>Monte Grappa</b><small>Launch NE · 1,450 m · Bassano, Italy</small></div>
+            <span class="status" id="status"><i></i><em style="font-style:normal" id="statusTxt">Flyable</em></span>
+          </div>
+          <div class="fc-grid">
+            <div><small>Thermals</small><b id="vTh">3.4</b><span>m/s</span></div>
+            <div><small>Cloudbase</small><b id="vCb">2,140</b><span>m</span></div>
+            <div><small>Wind at launch</small><b id="vWd">11</b><span id="vDir">km/h NE</span></div>
+            <div><small>XC potential</small><b id="vXc">142</b><span>km</span></div>
+          </div>
+          <div class="slider" id="slider" role="slider" tabindex="0" aria-label="Time of day" aria-valuemin="540" aria-valuemax="1140" aria-valuenow="800" aria-valuetext="13:20">
+            <div class="ticks" id="ticks"></div>
+            <div class="handle" id="handle"><span id="timeLbl">13:20</span></div>
+          </div>
+          <div class="fc-axis"><span>09:00</span><span>12:00</span><span>15:00</span><span>19:00</span></div>
+          <div class="fc-hint">↑ Drag through the day</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="clubs" aria-label="Flown by pilots from these clubs">
+    <div class="wrap clubs-in">
+      <span>Flown every day by pilots from</span>
+      <div class="clubs-mask"><div class="marquee">
+        <b>Bassano Free Flight</b><b>Annecy Parapente</b><b>Bir Billing Aero</b><b>Valle de Bravo XC</b><b>Owens Valley Soaring</b><b>Ölüdeniz Air</b><b>Castelluccio Club</b><b>Wanaka Paragliding</b>
+        <b>Bassano Free Flight</b><b>Annecy Parapente</b><b>Bir Billing Aero</b><b>Valle de Bravo XC</b><b>Owens Valley Soaring</b><b>Ölüdeniz Air</b><b>Castelluccio Club</b><b>Wanaka Paragliding</b>
+      </div></div>
+    </div>
+  </div>
+
+  <section class="tagline">
+    <div class="wrap"><p id="tagline">The sky tells you everything. Updraft *translates* it before you *clip* *in.*</p></div>
+  </section>
+
+  <section class="hs" id="layers">
+    <div class="hs-stick">
+      <div class="wrap hs-top">
+        <div><span class="tag">Four layers</span><h2>Read the sky<br>like a local.</h2></div>
+        <div class="hs-prog"><span id="hsCount">01 / 04</span><span class="hs-bar"><i id="hsBar"></i></span></div>
+      </div>
+      <div class="hs-track" id="hsTrack">
+        <article class="hcard">
+          <span class="num">01 · Thermals</span><h3>When the day switches on</h3>
+          <p>Climb rates by altitude band, so you know whether to launch at noon or wait for the sun to do its work.</p>
+          <div class="viz" id="bubbles"><div class="big">3.4<small>m/s average climb</small></div><div class="ground"></div></div>
+        </article>
+        <article class="hcard">
+          <span class="num">02 · Cloudbase</span><h3>Know your ceiling</h3>
+          <p>Cloudbase forecast to the nearest 50 metres, with a warning when it drops below the ridge.</p>
+          <div class="viz" id="cbViz">
+            <div class="ruler"><span>3,000</span><span>2,500</span><span>2,000</span><span>1,500</span><span>1,000</span><span>500</span></div>
+            <div class="cbline" id="cbLine"></div>
+            <div class="pcloud" id="pcloud"></div>
+            <div class="big" style="top:auto;bottom:20px"><span id="cbNum">2,140</span><small>metres above sea level</small></div>
+          </div>
+        </article>
+        <article class="hcard">
+          <span class="num">03 · Wind aloft</span><h3>The wind you will meet</h3>
+          <p>Launch wind is only half the story. See speed and direction at three heights before you commit.</p>
+          <div class="viz" style="background:var(--white)">
+            <div class="wrow"><small>3,000 m</small><div class="bar2"><i style="--w:78%;--c:var(--orange)"></i></div><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="--r:-35deg;--dl:-1s"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+            <div class="wrow"><small>2,000 m</small><div class="bar2"><i style="--w:52%"></i></div><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="--r:-20deg;--dl:-2s"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+            <div class="wrow"><small>1,000 m</small><div class="bar2"><i style="--w:30%;--c:var(--green)"></i></div><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="--r:10deg;--dl:0s"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+            <div class="wrow"><small>Summary</small><span style="font-size:14px;color:var(--muted)">Strong NW above 2,800 m after 15:00</span><b>27 km/h</b></div>
+          </div>
+        </article>
+        <article class="hcard">
+          <span class="num">04 · Airspace</span><h3>No surprise fines</h3>
+          <p>Restricted zones drawn right on your planned route, with ceilings that change by the hour.</p>
+          <div class="viz" id="mapViz"></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="forecast">
+    <div class="wrap">
+      <div class="sec-head reveal"><span class="tag">Plan the day</span><h2>One glance tells you<br>when to be on launch.</h2><p>Move across the chart to read any ten minute slot. The yellow band is the window Updraft would fly.</p></div>
+      <div class="chart-card reveal" style="--d:.1s">
+        <div class="chart-top">
+          <div><h3>Monte Grappa · Thursday</h3><p>Model blend of ICON D2, AROME and GFS · issued 06:00</p></div>
+          <div class="legend"><span style="--c:var(--cobalt)"><i></i>Climb rate</span><span style="--c:var(--sun)"><i></i>Best window</span></div>
+        </div>
+        <div class="chart" id="chart">
+          <div class="scrub" id="scrub"><i id="scrubDot"></i><div id="scrubTip"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="features" style="padding-top:32px">
+    <div class="wrap">
+      <div class="sec-head reveal"><span class="tag">Built for the hill</span><h2>Everything between<br>the car park and cloudbase.</h2></div>
+      <div class="tilts">
+        <article class="tilt reveal">
+          <div class="art" id="art1"></div>
+          <h3>Launch site ratings</h3>
+          <p>4,812 sites, each scored for today's wind direction, so you drive to the hill that works.</p>
+          <span class="glare"></span>
+        </article>
+        <article class="tilt reveal" style="--d:.08s">
+          <div class="art" id="art2"></div>
+          <h3>Cross country planner</h3>
+          <p>Draw a triangle, see the distance, the airspace, and whether the day can actually close it.</p>
+          <span class="glare"></span>
+        </article>
+        <article class="tilt reveal" style="--d:.16s">
+          <div class="art" id="art3"></div>
+          <h3>Live tracking for retrieve</h3>
+          <p>Your driver sees where you land, even with one bar of signal in the next valley over.</p>
+          <span class="glare"></span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" style="padding-top:32px" aria-label="What pilots say">
+    <div class="wrap car-head">
+      <div class="reveal"><span class="tag">Pilot reports</span><h2 class="h2">Flown, then reviewed.</h2></div>
+      <div class="car-btns"><button id="prev" aria-label="Previous review"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button><button id="next" aria-label="Next review"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+    </div>
+    <div class="car" id="car"><div class="car-track" id="carTrack"></div></div>
+    <div class="dots" id="dots"></div>
+  </section>
+
+  <section class="sec" id="pricing" style="padding-top:64px">
+    <div class="wrap">
+      <div class="sec-head reveal"><span class="tag">Pricing</span><h2>Cheaper than the<br>coffee on launch.</h2></div>
+      <div class="price-card reveal">
+        <div class="pc-l">
+          <h3 style="font-size:24px;letter-spacing:-.02em">Work out your cost per flight</h3>
+          <p class="lead" style="font-size:16px;line-height:24px;margin-top:8px">One price for the year. The more you fly, the less each day costs.</p>
+          <div class="days-q"><span>Days you fly each year</span><b id="daysLbl">36 days</b></div>
+          <div class="dslider" id="dslider" role="slider" tabindex="0" aria-label="Flying days per year" aria-valuemin="4" aria-valuemax="150" aria-valuenow="36">
+            <div class="fill" id="dfill"></div>
+            <div class="ticks" id="dticks"></div>
+            <div class="knob2" id="knob2"></div>
+          </div>
+          <div class="per-day"><b id="perDay">€1.64</b><span>per flying day</span></div>
+          <p class="compare" id="compare">Less than an espresso at the launch bar.</p>
+        </div>
+        <div class="pc-r">
+          <h3>Updraft Pilot</h3>
+          <div class="price">€59 <small>per year</small></div>
+          <span style="color:rgba(255,255,255,.6);font-size:14px">or €6.90 billed monthly</span>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12l5 5L20 7"/></svg>Hourly forecasts for all 4,812 sites</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12l5 5L20 7"/></svg>Thermals, cloudbase and wind aloft</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12l5 5L20 7"/></svg>Cross country planner with airspace</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12l5 5L20 7"/></svg>Live tracking for up to 4 friends</li>
+          </ul>
+          <a class="btn sun" href="#signup">Start your 30 day trial</a>
+          <p class="fine">No card needed. Cancel from the app in two taps.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="faq" style="padding-top:32px">
+    <div class="wrap">
+      <div class="sec-head reveal"><span class="tag">FAQ</span><h2>Before you clip in.</h2></div>
+      <div class="faq" id="faqList"></div>
+    </div>
+  </section>
+
+  <section class="final" id="signup" data-dark>
+    <canvas class="pix" id="pix2" aria-hidden="true"></canvas>
+    <div class="final-in">
+      <span class="tag light reveal">Thursday looks good</span>
+      <h2 class="reveal" style="--d:.05s">Your next thermal is already forming.</h2>
+      <p class="reveal" style="--d:.1s">Get tomorrow's best window for your home site in your inbox at 18:00 tonight. Free, and you can unsubscribe anytime.</p>
+      <form class="sub-form reveal" style="--d:.15s" id="form" novalidate>
+        <label for="email" class="skip" style="position:absolute;left:-9999px">Email address</label>
+        <input id="email" type="email" placeholder="you@example.com" autocomplete="email" required>
+        <button class="btn sun" type="submit">Send forecast</button>
+      </form>
+      <p class="form-msg" id="formMsg" role="status" aria-live="polite"></p>
+    </div>
+  </section>
+</main>
+
+<footer class="site" data-dark>
+  <div class="wrap">
+    <div class="foot">
+      <div><a class="logo" href="#top"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#ffd24a"/><path d="M10 34 54 16 30 38z" fill="#0a1433"/><path d="M30 38 54 16 36 50z" fill="#28345a"/></svg>Updraft</a><p class="blurb">Made in Bassano del Grappa by pilots who were tired of reading raw model output on launch.</p></div>
+      <div><h4>Product</h4><ul><li><a href="#forecast">Forecast</a></li><li><a href="#layers">Layers</a></li><li><a href="#pricing">Pricing</a></li></ul></div>
+      <div><h4>Pilots</h4><ul><li><a href="#features">Site ratings</a></li><li><a href="#faq">FAQ</a></li><li><a href="mailto:crew@updraft.example">Contact</a></li></ul></div>
+      <div><h4>Legal</h4><ul><li><a href="privacy">Privacy</a></li><li><a href="terms">Terms</a></li></ul></div>
+    </div>
+    <div class="wordmark" id="wordmark" aria-hidden="true"></div>
+    <div class="legal"><span>© 2026 Updraft Srl. A design sample. Always check conditions on launch.</span><a href="#top">Back to the sky ↑</a></div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+<script>
+(() => {
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fine = matchMedia('(pointer: fine)').matches;
+let W = innerWidth, H = innerHeight;
+addEventListener('resize', () => { W = innerWidth; H = innerHeight; });
+const mouse = { x: W * .7, y: H * .45, has: false, vx: 0, vy: 0 };
+addEventListener('pointermove', e => { mouse.vx = e.clientX - mouse.x; mouse.vy = e.clientY - mouse.y; mouse.x = e.clientX; mouse.y = e.clientY; mouse.has = true; }, { passive: true });
+const ticks = [];
+let lenis = null;
+if (!reduce && window.Lenis) lenis = new Lenis({ lerp: .1, wheelMultiplier: 1 });
+function loop(t) { if (lenis) lenis.raf(t); for (const f of ticks) f(t); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+requestAnimationFrame(() => document.body.classList.add('loaded'));
+const fmtTime = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m % 60)).padStart(2, '0')}`;
+
+/* nav */
+const nav = $('#nav'), menuBtn = $('.menu-btn'), darks = $$('[data-dark]');
+ticks.push(() => {
+  let dark = false;
+  for (const d of darks) { const b = d.getBoundingClientRect(); if (b.top <= 40 && b.bottom >= 40) dark = true; }
+  if (nav._d !== dark) { nav._d = dark; nav.classList.toggle('light', !dark); }
+});
+function closeMenu() { document.body.classList.remove('menu-open'); menuBtn.setAttribute('aria-expanded', 'false'); $('.mobile-menu').setAttribute('aria-hidden', 'true'); lenis && lenis.start(); }
+menuBtn.addEventListener('click', () => {
+  const open = !document.body.classList.contains('menu-open');
+  document.body.classList.toggle('menu-open', open); menuBtn.setAttribute('aria-expanded', open); $('.mobile-menu').setAttribute('aria-hidden', !open);
+  $$('.mobile-menu a').forEach((a, i) => a.style.transitionDelay = open ? Math.min(i * 60, 400) + 'ms' : '0ms');
+  open ? lenis && lenis.stop() : lenis && lenis.start();
+});
+$$('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
+  const id = a.getAttribute('href'); const el = id.length > 1 ? $(id) : null;
+  if (!el) return; e.preventDefault(); closeMenu();
+  lenis ? lenis.scrollTo(el, { offset: id === '#top' ? 0 : -16, duration: 1.6 }) : el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
+}));
+const navLinks = $$('.nav-links a');
+const spy = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id)); }), { rootMargin: '-45% 0px -50% 0px' });
+['forecast', 'layers', 'features', 'pricing', 'faq'].forEach(id => spy.observe($('#' + id)));
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -10% 0px' });
+$$('.reveal, #wordmark, #chart').forEach(el => io.observe(el));
+
+/* dithered sky shader */
+function pixelSky(cv, opts) {
+  const gl = cv.getContext('webgl', { antialias: false, alpha: false });
+  if (!gl) { cv.style.background = '#1f4fd8'; return; }
+  const fs = `precision highp float;
+uniform vec2 uRes;uniform float uTime;uniform vec2 uMouse;uniform vec2 uVel;uniform float uScroll;uniform float uSeed;uniform float uBank;
+float hash(vec2 p){p=fract(p*vec2(443.897,441.423));p+=dot(p,p.yx+19.19);return fract((p.x+p.y)*p.x);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);}
+float fbm(vec2 p){float v=0.,a=.5;mat2 m=mat2(1.6,1.2,-1.2,1.6);for(int i=0;i<6;i++){v+=a*noise(p);p=m*p;a*=.5;}return v;}
+float bayer2(vec2 a){a=floor(a);return fract(a.x/2.+a.y*a.y*.75);}
+float bayer4(vec2 a){return bayer2(.5*a)*.25+bayer2(a);}
+float dens(vec2 p,float y,float x){
+  vec2 q=vec2(fbm(p+vec2(0.,uTime*.012)),fbm(p+vec2(5.2,1.3)));
+  float n=fbm(p+q*1.1);
+  float th=mix(.4,1.02,smoothstep(.02,.56,y))-x*.12+uBank;
+  return smoothstep(th,th+.12,n);
+}
+void main(){
+  vec2 fc=gl_FragCoord.xy;vec2 v=fc/uRes;float asp=uRes.x/uRes.y;
+  vec2 uv=vec2(v.x*asp,v.y);
+  vec2 mo=vec2(uMouse.x*asp,uMouse.y);
+  vec2 dm=uv-mo;float infl=exp(-dot(dm,dm)*10.);
+  float y=v.y-uScroll*.7;
+  vec2 p=uv*vec2(2.,3.2)+vec2(uTime*.02+uSeed,-uScroll*1.6)+(uMouse-.5)*vec2(.22,.1);
+  p-=uVel*infl*.9+normalize(dm+.0001)*infl*.12;
+  float d=dens(p,y,v.x);
+  float du=dens(p+vec2(-.035,.075),y+.02,v.x);
+  float lit=clamp(.45+(d-du)*2.6,0.,1.);
+  float body=fbm(p*2.6+vec2(9.,uTime*.01));
+  float sky=mix(.31,.07,pow(v.y,.8));
+  float c=mix(sky,mix(.47,1.14,clamp(lit*.85+body*.6-.15,0.,1.)),d);
+  float sp=hash(floor(fc)+uSeed);
+  float tw=step(.9972,sp)*step(.35,sin(uTime*2.6+sp*300.))*(1.-d)*smoothstep(.3,.7,v.y);
+  c=max(c,tw);
+  float lev=floor(clamp(c*4.+(bayer4(fc)-.5)*.78,0.,4.));
+  vec3 c0=vec3(.055,.17,.62),c1=vec3(.122,.31,.847),c2=vec3(.36,.545,.94),c3=vec3(.72,.8,.985),c4=vec3(.97,.98,1.);
+  vec3 col=c0;col=mix(col,c1,step(.5,lev));col=mix(col,c2,step(1.5,lev));col=mix(col,c3,step(2.5,lev));col=mix(col,c4,step(3.5,lev));
+  gl_FragColor=vec4(col,1.);
+}`;
+  const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(o)); return o; };
+  const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}')); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(pr); gl.useProgram(pr);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  const U = {}; ['uRes', 'uTime', 'uMouse', 'uVel', 'uScroll', 'uSeed', 'uBank'].forEach(n => U[n] = gl.getUniformLocation(pr, n));
+  const px = () => W < 700 ? 2 : 3;
+  const size = () => { cv.width = Math.ceil(cv.clientWidth / px()); cv.height = Math.ceil(cv.clientHeight / px()); gl.viewport(0, 0, cv.width, cv.height); };
+  size(); addEventListener('resize', size);
+  let visible = true; new IntersectionObserver(([e]) => visible = e.isIntersecting).observe(cv);
+  const m = { x: .5, y: .5 }, vel = { x: 0, y: 0 }; const t0 = performance.now();
+  ticks.push(t => {
+    if (!visible) return;
+    const b = cv.getBoundingClientRect();
+    const inside = mouse.y > b.top && mouse.y < b.bottom;
+    if (inside && !reduce) { m.x = lerp(m.x, mouse.x / b.width, .05); m.y = lerp(m.y, 1 - (mouse.y - b.top) / b.height, .05); }
+    vel.x = lerp(vel.x, inside ? clamp(mouse.vx, -40, 40) / 400 : 0, .08); vel.y = lerp(vel.y, inside ? -clamp(mouse.vy, -40, 40) / 400 : 0, .08);
+    mouse.vx *= .85; mouse.vy *= .85;
+    gl.uniform2f(U.uRes, cv.width, cv.height); gl.uniform1f(U.uTime, reduce ? 20 : (t - t0) / 1000);
+    gl.uniform2f(U.uMouse, m.x, m.y); gl.uniform2f(U.uVel, vel.x, vel.y);
+    gl.uniform1f(U.uScroll, opts.scroll(b)); gl.uniform1f(U.uSeed, opts.seed); gl.uniform1f(U.uBank, opts.bank || 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  });
+}
+pixelSky($('#pix'), { seed: 0, scroll: b => clamp(-b.top / b.height, 0, 1) });
+pixelSky($('#pix2'), { seed: 17.3, bank: .06, scroll: b => clamp((H - b.top) / (H + b.height), 0, 1) * .5 - .25 });
+
+/* glider + pixel trail */
+(() => {
+  const hero = $('.hero'), el = $('#glider'), cv = $('#trail'), ctx = cv.getContext('2d');
+  const g = { x: W * .62, y: H * .4, vx: 0, vy: 0, pitch: 0, dir: 1, dirS: 1 }; const pts = [];
+  const size = () => { cv.width = hero.clientWidth; cv.height = hero.clientHeight; };
+  size(); addEventListener('resize', size);
+  let visible = true; new IntersectionObserver(([e]) => visible = e.isIntersecting).observe(hero);
+  ticks.push(t => {
+    if (!visible) return;
+    const top = hero.getBoundingClientRect().top;
+    let tx, ty;
+    if (mouse.has && fine && !reduce) { tx = mouse.x - 56; ty = mouse.y - top + 36; }
+    else { const k = t / 1000 * .3; tx = W * (W < 980 ? .5 : .6) + Math.sin(k) * W * .28; ty = hero.clientHeight * .2 + Math.sin(k * 2) * 60; }
+    g.vx += (tx - g.x) * .010; g.vy += (ty - g.y) * .010; g.vx *= .91; g.vy *= .91; g.x += g.vx; g.y += g.vy;
+    if (g.vx > .8) g.dir = 1; else if (g.vx < -.8) g.dir = -1;
+    g.dirS = lerp(g.dirS, g.dir, .1);
+    const sp = Math.hypot(g.vx, g.vy);
+    const tp = sp > .4 ? clamp(Math.atan2(g.vy, Math.abs(g.vx)), -.7, .7) : 0;
+    g.pitch = lerp(g.pitch, tp, .08);
+    const bob = Math.sin(t / 600) * 3 * (1 - clamp(sp / 4, 0, 1));
+    el.style.transform = `translate(${g.x}px,${g.y + bob}px) scale(${g.dirS},1) rotate(${g.pitch}rad)`;
+    pts.push([g.x - Math.cos(g.pitch) * 26 * g.dir, g.y + bob + 6]); if (pts.length > 70) pts.shift();
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    for (let i = 0; i < pts.length; i += 3) { const a = i / pts.length; ctx.fillStyle = `rgba(255,255,255,${a * .7})`; const s = 3; ctx.fillRect(Math.round(pts[i][0] / s) * s, Math.round(pts[i][1] / s) * s, s, s); }
+  });
+})();
+
+/* forecast card slider */
+const model = m => {
+  const t = m / 60, s = Math.max(0, Math.sin(Math.PI * (t - 9) / 10));
+  const th = .6 + 3.2 * Math.pow(s, 1.3), cb = Math.round((900 + 1450 * Math.pow(s, .9)) / 10) * 10;
+  const ss = clamp((t - 12) / 6, 0, 1), wd = 6 + 9 * ss * ss * (3 - 2 * ss), xc = Math.round(10 + 160 * Math.pow(s, 1.6));
+  return { th, cb, wd, xc, dir: t > 16 ? 'E' : 'NE' };
+};
+function tickSlider(el, ticksEl, n, opts) {
+  ticksEl.innerHTML = '<i></i>'.repeat(n); const tks = $$('i', ticksEl);
+  let val = opts.value, shown = opts.from ?? opts.value, drag = false;
+  const pad = opts.pad;
+  const toVal = x => { const b = el.getBoundingClientRect(); const k = clamp((x - b.left - pad) / (b.width - pad * 2), 0, 1); return opts.min + k * (opts.max - opts.min); };
+  el.addEventListener('pointerdown', e => { drag = true; el.setPointerCapture(e.pointerId); val = toVal(e.clientX); });
+  el.addEventListener('pointermove', e => { if (drag) val = toVal(e.clientX); });
+  const up = () => { if (!drag) return; drag = false; val = Math.round(val / opts.step) * opts.step; };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  el.addEventListener('keydown', e => { const k = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key]; if (k) { e.preventDefault(); val = clamp(Math.round(val / opts.step) * opts.step + k * opts.step * (e.shiftKey ? 6 : 1), opts.min, opts.max); } });
+  let last = -1;
+  ticks.push(() => {
+    shown = reduce ? val : lerp(shown, val, drag ? .25 : .12);
+    if (Math.abs(shown - last) < .01) return; last = shown;
+    const k = (shown - opts.min) / (opts.max - opts.min), w = el.clientWidth - pad * 2;
+    opts.place(k * w + pad);
+    const hx = k * (n - 1);
+    tks.forEach((t, i) => { const d = Math.abs(i - hx); t.style.setProperty('--s', (1 + 1.6 * Math.exp(-d * d / 6)).toFixed(3)); t.classList.toggle('hot', d < 3); });
+    el.setAttribute('aria-valuenow', Math.round(shown));
+    opts.update(shown);
+  });
+  return { set: v => val = v };
+}
+(() => {
+  const handle = $('#handle'), lbl = $('#timeLbl'), slider = $('#slider'), st = $('#status');
+  const vTh = $('#vTh'), vCb = $('#vCb'), vWd = $('#vWd'), vXc = $('#vXc'), vDir = $('#vDir'), stT = $('#statusTxt');
+  tickSlider(slider, $('#ticks'), 61, {
+    min: 540, max: 1140, step: 10, value: 800, from: 560, pad: 16,
+    place: x => handle.style.transform = `translateX(${x - 16}px)`,
+    update: m => {
+      const r = model(m); const tl = fmtTime(Math.round(m / 10) * 10);
+      lbl.textContent = tl; slider.setAttribute('aria-valuetext', tl);
+      vTh.textContent = r.th.toFixed(1); vCb.textContent = r.cb.toLocaleString('en-US'); vWd.textContent = Math.round(r.wd); vXc.textContent = r.xc; vDir.textContent = 'km/h ' + r.dir;
+      const s = r.wd > 13.5 ? ['Strong wind', 'var(--orange)'] : r.th < 1.3 ? ['Too weak', '#9fb6f2'] : ['Flyable', 'var(--green)'];
+      if (stT.textContent !== s[0]) { stT.textContent = s[0]; st.style.setProperty('--st', s[1]); }
+    }
+  });
+})();
+
+/* tagline */
+(() => {
+  const p = $('#tagline');
+  p.innerHTML = p.textContent.split(' ').map(w => { const hl = w.startsWith('*'); return `<span class="w${hl ? ' hl' : ''}">${w.replace(/\*/g, '')}</span>`; }).join(' ');
+  const words = $$('.w', p);
+  ticks.push(() => { const line = H * .65; for (const w of words) { const on = w.getBoundingClientRect().top < line; if (on !== w._on) { w._on = on; w.classList.toggle('on', on); } } });
+})();
+
+/* horizontal layers */
+(() => {
+  const hs = $('#layers'), track = $('#hsTrack'), bar = $('#hsBar'), count = $('#hsCount'), cards = $$('.hcard', track);
+  let max = 0, cur = 0;
+  const size = () => {
+    if (W < 760) { hs.style.height = ''; return; }
+    max = Math.max(0, track.scrollWidth - W + Math.max(24, (W - 1192) / 2));
+    hs.style.height = (H + max) + 'px';
+  };
+  size(); addEventListener('resize', size); document.fonts && document.fonts.ready.then(size);
+  const cloudEl = $('#pcloud'), cbNum = $('#cbNum'), cbLine = $('#cbLine'), cbViz = $('#cbViz');
+  ticks.push(() => {
+    if (W < 760) return;
+    const b = hs.getBoundingClientRect(); if (b.bottom < 0 || b.top > H) return;
+    const p = clamp(-b.top / Math.max(1, b.height - H), 0, 1);
+    cur = reduce ? p : lerp(cur, p, .12);
+    track.style.transform = `translate3d(${(-cur * max).toFixed(2)}px,0,0)`;
+    bar.style.transform = `scaleX(${cur})`;
+    count.textContent = `0${Math.min(4, 1 + Math.floor(cur * 4.0001))} / 04`;
+  });
+  /* bubbles */
+  const bub = $('#bubbles'); let s = 5; const rand = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  let html = ''; for (let i = 0; i < 22; i++) { const z = 8 + rand() * 22; html += `<span class="bub" style="left:${5 + rand() * 88}%;width:${z}px;height:${z}px;--t:${3 + rand() * 4}s;--dl:${-rand() * 6}s;--h:${180 + rand() * 160}px;border-width:${z > 20 ? 3 : 2}px"></span>`; }
+  bub.insertAdjacentHTML('afterbegin', html);
+  /* pixel cloud */
+  const map = ['......XXXX.........', '....XXXXXXXX.XXX...', '..XXXXXXXXXXXXXXXX.', '.XXXXXXXXXXXXXXXXXX', 'XXXXXXXXXXXXXXXXXXX', '.XXXXXXXXXXXXXXXXX.'];
+  const cloudSvg = (fill = '#fff', shade = '#b8cdfb') => { let r = ''; map.forEach((row, y) => [...row].forEach((c, x) => { if (c === 'X') r += `<rect x="${x * 8}" y="${y * 8}" width="8" height="8" fill="${y >= map.length - 2 ? shade : fill}"/>`; })); return `<svg viewBox="0 0 ${map[0].length * 8} ${map.length * 8}" aria-hidden="true">${r}</svg>`; };
+  window.__cloudSvg = cloudSvg;
+  cloudEl.innerHTML = cloudSvg();
+  ticks.push(t => {
+    const b = cbViz.getBoundingClientRect(); if (b.right < 0 || b.left > W || b.bottom < 0 || b.top > H) return;
+    const h = cbViz.clientHeight - 48, k = .55 + Math.sin(t / 2600) * .08 + clamp((W - b.left) / W, 0, 1) * .05;
+    const y = 24 + (1 - k) * h; const m = Math.round((3000 - (y - 24) / h * 2500) / 10) * 10;
+    cloudEl.style.transform = `translateY(${y - 48}px)`; cbLine.style.top = (y + 4) + 'px'; cbNum.textContent = m.toLocaleString('en-US');
+  });
+  /* airspace map */
+  let contours = ''; for (let i = 0; i < 6; i++) { const r = 30 + i * 26; let d = ''; for (let a = 0; a <= 64; a++) { const th = a / 64 * Math.PI * 2, rr = r + Math.sin(th * 3 + i) * 8 + Math.cos(th * 5 - i) * 5; d += (a ? 'L' : 'M') + (150 + Math.cos(th) * rr * 1.3).toFixed(1) + ' ' + (120 + Math.sin(th) * rr * .8).toFixed(1); } contours += `<path d="${d}Z" fill="none" stroke="rgba(31,79,216,.18)" stroke-width="1"/>`; }
+  $('#mapViz').innerHTML = `<svg viewBox="0 0 420 260" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%"><defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#ff7a3d" stroke-width="3" opacity=".5"/></pattern></defs>${contours}<path d="M290 20 L400 40 L410 150 L320 170 Z" fill="url(#hatch)" stroke="#ff7a3d" stroke-width="1.5"/><text x="318" y="70" font-family="DM Mono" font-size="11" fill="#c2511d">CTR TREVISO</text><text x="318" y="86" font-family="DM Mono" font-size="10" fill="#c2511d">SFC to 1,500 m</text><path class="route" d="M80 200 L170 70 L270 150 Z" fill="none" stroke="#1f4fd8" stroke-width="2.5"/><g font-family="DM Mono" font-size="11" fill="#0a1433"><circle cx="80" cy="200" r="7" fill="#ffd24a" stroke="#0a1433" stroke-width="2"/><text x="94" y="214">Launch</text><circle cx="170" cy="70" r="6" fill="#fff" stroke="#1f4fd8" stroke-width="2"/><text x="182" y="66">TP1 Col Moschin</text><circle cx="270" cy="150" r="6" fill="#fff" stroke="#1f4fd8" stroke-width="2"/><text x="226" y="178">TP2 Feltre</text></g><g transform="translate(24,24)"><rect width="128" height="44" rx="12" fill="#0a1433"/><text x="14" y="19" font-family="DM Mono" font-size="10" fill="rgba(255,255,255,.6)">FAI TRIANGLE</text><text x="14" y="35" font-family="Manrope" font-weight="700" font-size="15" fill="#fff">87.4 km</text></g></svg>`;
+})();
+
+/* hour chart */
+(() => {
+  const el = $('#chart'), scrub = $('#scrub'), tip = $('#scrubTip');
+  const VW = 1000, VH = 320, L = 40, R = 16, T = 56, B = 30;
+  const xs = m => L + (m - 540) / 600 * (VW - L - R), ys = v => T + (1 - v / 4.5) * (VH - T - B);
+  const pts = []; for (let m = 540; m <= 1140; m += 10) pts.push([m, model(m).th]);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + xs(p[0]).toFixed(1) + ' ' + ys(p[1]).toFixed(1)).join(' ');
+  const area = line + ` L${xs(1140)} ${ys(0)} L${xs(540)} ${ys(0)} Z`;
+  let g = ''; for (let v = 0; v <= 4; v++) g += `<line class="gl" x1="${L}" x2="${VW - R}" y1="${ys(v)}" y2="${ys(v)}"/><text class="axis" x="${L - 12}" y="${ys(v) + 4}" text-anchor="end">${v}</text>`;
+  for (let h = 9; h <= 19; h++) g += `<text class="axis" x="${xs(h * 60)}" y="${VH - 6}" text-anchor="middle">${String(h).padStart(2, '0')}</text>`;
+  const cc = [.1, .2, .35, .6, .8, 1, .9, .7, .5, .3, .15];
+  let clouds = ''; cc.forEach((c, i) => { const w = 18 + c * 30, x = xs(540 + i * 60) - w / 2; clouds += `<g transform="translate(${x.toFixed(1)},${(22 - c * 10).toFixed(1)}) scale(${(w / 152).toFixed(3)})" opacity="${.35 + c * .65}">${window.__cloudSvg('#b8cdfb', '#5c8bf0').replace(/<\/?svg[^>]*>/g, '')}</g>`; });
+  el.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 ${VW} ${VH}" role="img" aria-label="Climb rate through the day, peaking near 3.8 metres per second at 14:00"><defs><pattern id="dith" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="rgba(31,79,216,.10)"/><rect width="3" height="3" fill="rgba(31,79,216,.28)"/></pattern></defs>${g}<rect class="best" x="${xs(760)}" y="${T - 8}" width="${xs(920) - xs(760)}" height="${VH - T - B + 8}" rx="6"/><text class="best-l" x="${xs(840)}" y="${T + 8}" text-anchor="middle">BEST 12:40 TO 15:20</text>${clouds}<path class="area" d="${area}" fill="url(#dith)"/><path class="ln" d="${line}" pathLength="1"/></svg>`);
+  const svg = $('svg', el);
+  let target = 840, cur = 840, active = false;
+  const setFrom = x => { const b = svg.getBoundingClientRect(); const vx = (x - b.left) / b.width * VW; target = clamp(540 + (vx - L) / (VW - L - R) * 600, 540, 1140); };
+  el.addEventListener('pointermove', e => { setFrom(e.clientX); active = true; });
+  el.addEventListener('pointerdown', e => { setFrom(e.clientX); el.classList.add('touch'); });
+  el.addEventListener('pointerleave', () => { el.classList.remove('touch'); });
+  let last = -1;
+  ticks.push(() => {
+    cur = lerp(cur, target, .18); if (Math.abs(cur - last) < .05) return; last = cur;
+    const b = svg.getBoundingClientRect(), k = b.width / VW, m = Math.round(cur / 10) * 10, r = model(cur);
+    scrub.style.transform = `translateX(${xs(cur) * k}px)`;
+    $('#scrubDot').style.top = ys(r.th) * k + 'px';
+    tip.innerHTML = `<b>${fmtTime(m)}</b><span>Climb <em>${r.th.toFixed(1)} m/s</em></span><span>Cloudbase <em>${r.cb.toLocaleString('en-US')} m</em></span><span>Wind <em>${Math.round(r.wd)} km/h ${r.dir}</em></span>`;
+    tip.classList.toggle('flip', xs(cur) > VW * .72);
+  });
+})();
+
+/* tilt cards + art */
+(() => {
+  $('#art1').innerHTML = `<svg viewBox="0 0 300 220" style="width:100%;height:100%"><g transform="translate(150 112)"><circle r="84" fill="#fff" stroke="rgba(10,20,51,.08)"/>${[0, 45, 90, 135, 180, 225, 270, 315].map((a, i) => { const good = [0, 45, 315].includes(a), ok = [90, 270].includes(a); return `<path d="M0 0 L${Math.sin((a - 20) * Math.PI / 180) * 80} ${-Math.cos((a - 20) * Math.PI / 180) * 80} A80 80 0 0 1 ${Math.sin((a + 20) * Math.PI / 180) * 80} ${-Math.cos((a + 20) * Math.PI / 180) * 80} Z" fill="${good ? '#2fd27a' : ok ? '#ffd24a' : '#e7eefe'}" opacity="${good ? .9 : ok ? .8 : 1}"/>`; }).join('')}<circle r="34" fill="#fff"/><text y="-90" text-anchor="middle" font-family="DM Mono" font-size="11" fill="#0a1433">N</text><text y="6" text-anchor="middle" font-family="Manrope" font-weight="700" font-size="18" fill="#0a1433">9.1</text></g></svg>`;
+  $('#art2').innerHTML = `<svg viewBox="0 0 300 220" style="width:100%;height:100%"><defs><pattern id="grd" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="rgba(31,79,216,.12)"/></pattern></defs><rect width="300" height="220" fill="url(#grd)"/><path class="route" d="M60 170 L150 40 L250 150 Z" fill="rgba(31,79,216,.08)" stroke="#1f4fd8" stroke-width="2.5"/><circle cx="60" cy="170" r="7" fill="#ffd24a" stroke="#0a1433" stroke-width="2"/><circle cx="150" cy="40" r="6" fill="#fff" stroke="#1f4fd8" stroke-width="2"/><circle cx="250" cy="150" r="6" fill="#fff" stroke="#1f4fd8" stroke-width="2"/><rect x="104" y="100" width="92" height="30" rx="10" fill="#0a1433"/><text x="150" y="120" text-anchor="middle" font-family="DM Mono" font-size="13" fill="#fff">87.4 km</text></svg>`;
+  $('#art3').innerHTML = `<svg viewBox="0 0 330 220" style="width:100%;height:100%;position:absolute;inset:0"><path d="M30 170 C 80 120, 120 160, 170 90 S 260 40, 300 70" fill="none" stroke="#1f4fd8" stroke-width="2" stroke-dasharray="4 6"/><path d="M0 200 C 60 180 120 210 200 190 S 300 170 330 185" fill="none" stroke="rgba(10,20,51,.15)" stroke-width="10" stroke-linecap="round"/><circle cx="300" cy="70" r="10" fill="#fff" stroke="#0a1433" stroke-width="2"/><text x="214" y="44" font-family="DM Mono" font-size="11" fill="#0a1433">2.3 km to road</text></svg><span class="mover"></span>`;
+  if (!fine || reduce) return;
+  $$('.tilt').forEach(c => {
+    c.addEventListener('pointermove', e => { const b = c.getBoundingClientRect(), x = (e.clientX - b.left) / b.width, y = (e.clientY - b.top) / b.height; c.style.transition = 'transform .2s var(--ease), box-shadow .7s var(--ease)'; c.style.transform = `rotateY(${(x - .5) * 12}deg) rotateX(${(.5 - y) * 10}deg) translateZ(0)`; c.style.setProperty('--gx', x * 100 + '%'); c.style.setProperty('--gy', y * 100 + '%'); });
+    c.addEventListener('pointerleave', () => { c.style.transition = ''; c.style.transform = ''; });
+  });
+})();
+
+/* testimonials drag carousel */
+(() => {
+  const Q = [
+    ['I used to read three models and still guess. Now I check one screen and I am on launch at the right hour.', 'Marco Bellini', 'Ozone Rush 6 · Bassano', '#ffd24a'],
+    ['The cloudbase warning kept me off the hill on a day two friends got pinned under a lid at 1,600 metres.', 'Léa Rousseau', 'Advance Iota · Annecy', '#b8cdfb'],
+    ['Closed my first 100 km triangle using the planner. The window it suggested was right to the half hour.', 'Arjun Kapoor', 'Gin Explorer · Bir Billing', '#ffb38a'],
+    ['My wife drives retrieve. She loves the tracking more than I love the forecast, which says something.', 'Tomás Salgado', 'Nova Mentor 7 · Valle de Bravo', '#c8f2d8'],
+    ['Wind aloft on one screen is the feature I did not know I needed. No more surprise headwinds at 3,000.', 'Hannah Whitlock', 'Niviuk Hook · Owens Valley', '#e6d3ff'],
+    ['Clean, fast and honest about uncertainty. When the models disagree, it tells you instead of guessing.', 'Emre Yıldız', 'Skywalk Chili · Ölüdeniz', '#ffe3bf']
+  ];
+  const car = $('#car'), track = $('#carTrack'), dots = $('#dots');
+  track.innerHTML = Q.map(([q, n, w, c]) => `<figure class="tq"><p>“${q}”</p><footer><span class="av" style="--c:${c}">${n.split(' ').map(x => x[0]).join('')}</span><span>${n}<small>${w}</small></span></footer></figure>`).join('');
+  dots.innerHTML = Q.map(() => '<i></i>').join('');
+  const cards = $$('.tq', track), dEls = $$('i', dots);
+  let x = 0, target = 0, drag = false, sx = 0, sTarget = 0, idx = 0, vel = 0, lastX = 0;
+  const step = () => cards[1].offsetLeft - cards[0].offsetLeft;
+  const maxX = () => (cards.length - 1) * step();
+  const go = i => { idx = clamp(i, 0, cards.length - 1); target = idx * step(); };
+  car.addEventListener('pointerdown', e => { drag = true; sx = e.clientX; sTarget = target; lastX = e.clientX; vel = 0; car.setPointerCapture(e.pointerId); });
+  car.addEventListener('pointermove', e => { if (!drag) return; vel = e.clientX - lastX; lastX = e.clientX; let t = sTarget - (e.clientX - sx); if (t < 0) t *= .35; if (t > maxX()) t = maxX() + (t - maxX()) * .35; target = t; });
+  const up = () => { if (!drag) return; drag = false; go(Math.round((target - vel * 6) / step())); };
+  car.addEventListener('pointerup', up); car.addEventListener('pointercancel', up);
+  $('#prev').addEventListener('click', () => go(idx - 1)); $('#next').addEventListener('click', () => go(idx + 1));
+  ticks.push(() => {
+    x = lerp(x, target, drag ? .35 : .09);
+    track.style.transform = `translate3d(${-x}px,0,0)`;
+    const a = Math.round(x / step());
+    if (a !== track._a) { track._a = a; cards.forEach((c, i) => c.classList.toggle('on', i === a)); dEls.forEach((d, i) => d.classList.toggle('on', i === a)); }
+  });
+})();
+
+/* pricing slider */
+(() => {
+  const k2 = $('#knob2'), fill = $('#dfill'), lbl = $('#daysLbl'), per = $('#perDay'), cmp = $('#compare'), ds = $('#dslider');
+  tickSlider(ds, $('#dticks'), 48, {
+    min: 4, max: 150, step: 1, value: 36, from: 4, pad: 20,
+    place: x => { k2.style.transform = `translateX(${x}px)`; fill.style.width = x + 'px'; },
+    update: v => {
+      const d = Math.round(v), p = 59 / d;
+      lbl.textContent = d + (d === 1 ? ' day' : ' days'); ds.setAttribute('aria-valuetext', d + ' days');
+      per.textContent = '€' + p.toFixed(2);
+      cmp.textContent = p < .7 ? 'About the price of a parking ticket at the landing field.' : p < 2.2 ? 'Less than an espresso at the launch bar.' : p < 6 ? 'Still less than a sandwich on top.' : 'Try monthly at €6.90 for a lighter season.';
+    }
+  });
+})();
+
+/* faq */
+(() => {
+  const F = [
+    ['Which weather models do you use?', 'A blend of ICON D2, AROME, ICON EU and GFS, weighted by how each one has scored at that site over the last 90 days. We show you when they disagree.'],
+    ['Is it useful for hang gliding and sailplanes?', 'Yes. Thermal strength and cloudbase work for any soaring aircraft. Sailplane pilots can switch units to knots and feet in settings.'],
+    ['How often does the forecast update?', 'Every hour between 05:00 and 21:00 local time, and every three hours overnight. Each update arrives in about 40 seconds.'],
+    ['Does it replace checking on launch?', 'No forecast replaces your own judgement. Updraft tells you where to go and when. You still decide whether to fly once you are standing there.'],
+    ['Can I add my own site?', 'Yes. Drop a pin, set the launch direction and elevation, and you get a full forecast within the hour. 1,207 of our sites came from pilots.'],
+    ['What happens after the trial?', 'You pick yearly at €59 or monthly at €6.90. If you do nothing, your account drops to the free daily email and nothing is charged.']
+  ];
+  const list = $('#faqList');
+  list.innerHTML = F.map(([q, a], i) => `<div class="fq reveal" style="--d:${(i % 2) * .06}s"><button aria-expanded="false" aria-controls="fa${i}" id="fq${i}">${q}<span class="pm" aria-hidden="true"></span></button><div class="ans" id="fa${i}" role="region" aria-labelledby="fq${i}"><div><p>${a}</p></div></div></div>`).join('');
+  $$('.fq', list).forEach(el => io.observe(el));
+  list.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const it = b.parentElement, open = !it.classList.contains('open'); it.classList.toggle('open', open); b.setAttribute('aria-expanded', open); });
+})();
+
+/* form */
+$('#form').addEventListener('submit', e => {
+  e.preventDefault(); const v = $('#email').value.trim(), msg = $('#formMsg');
+  if (!v) { msg.textContent = 'Add your email so we know where to send it.'; msg.className = 'form-msg err'; return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) { msg.textContent = 'That email looks incomplete. Check for a missing @ or domain.'; msg.className = 'form-msg err'; return; }
+  msg.textContent = `Done. Tomorrow's forecast lands at ${v} by 18:00.`; msg.className = 'form-msg'; e.target.reset();
+});
+
+$('#wordmark').innerHTML = 'updraft'.split('').map((c, i) => `<span style="--i:${i}">${c}</span>`).join('');
+})();
+</script>
+</body>
+</html>
